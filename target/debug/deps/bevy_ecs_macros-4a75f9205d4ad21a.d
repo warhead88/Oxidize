@@ -1,0 +1,10 @@
+/home/w88/Projects/code/5ASlicer/target/debug/deps/bevy_ecs_macros-4a75f9205d4ad21a.d: /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/lib.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/component.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/query_data.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/query_filter.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/states.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/world_query.rs
+
+/home/w88/Projects/code/5ASlicer/target/debug/deps/libbevy_ecs_macros-4a75f9205d4ad21a.so: /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/lib.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/component.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/query_data.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/query_filter.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/states.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/world_query.rs
+
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/lib.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/component.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/query_data.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/query_filter.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/states.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs_macros-0.14.2/src/world_query.rs:

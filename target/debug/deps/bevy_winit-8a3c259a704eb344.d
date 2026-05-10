@@ -1,0 +1,12 @@
+/home/w88/Projects/code/5ASlicer/target/debug/deps/bevy_winit-8a3c259a704eb344.d: /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/lib.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/accessibility.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/converters.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/state.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/system.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/winit_config.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/winit_event.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/winit_windows.rs
+
+/home/w88/Projects/code/5ASlicer/target/debug/deps/libbevy_winit-8a3c259a704eb344.rmeta: /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/lib.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/accessibility.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/converters.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/state.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/system.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/winit_config.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/winit_event.rs /home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/winit_windows.rs
+
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/lib.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/accessibility.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/converters.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/state.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/system.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/winit_config.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/winit_event.rs:
+/home/w88/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_winit-0.14.2/src/winit_windows.rs:

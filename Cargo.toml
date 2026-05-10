@@ -3,5 +3,6 @@ members = [
     "crates/core_types",
     "crates/kinematics",
     "crates/engine",
+    "crates/simulator",
 ]
 resolver = "2"
