@@ -1,0 +1,26 @@
+[package]
+name = "gui_studio"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "gui_studio"
+path = "src/main.rs"
+
+[dependencies]
+# Local crates
+simulator = { path = "../../crates/simulator" }
+engine = { path = "../../crates/engine" }
+kinematics = { path = "../../crates/kinematics" }
+core_types = { path = "../../crates/core_types" }
+
+# Bevy (workspace-shared via simulator, but needed for App construction)
+bevy = "0.14"
+
+# CLI, logging, error handling, config
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+toml = "0.8"
+serde = { version = "1.0", features = ["derive"] }

@@ -6,42 +6,45 @@ pub mod plugins;
 pub mod resources;
 
 use bevy::prelude::*;
-use plugins::{kinematics_sync::KinematicsSyncPlugin, scene::ScenePlugin, ui::UiPlugin};
-use resources::{MachineState, ViewportConfig};
 use engine::MachineContext;
-use kinematics::Kinematics;
-use core_types::{ActuatorState, TargetState};
+use plugins::{kinematics_sync::KinematicsSyncPlugin, scene::ScenePlugin, ui::UiPlugin};
+use resources::ViewportConfig;
 use std::sync::Mutex;
 
-// Dummy kinematics implementation just to satisfy the initial MachineContext
-struct DummyKinematics;
-impl Kinematics for DummyKinematics {
-    fn forward_kinematics(&self, _target: &TargetState) -> ActuatorState {
-        ActuatorState::default()
-    }
-    fn inverse_kinematics(&self, _actuators: &ActuatorState) -> TargetState {
-        TargetState::default()
+/// The main Simulator plugin.
+/// Accepts an externally-built `MachineContext` so that `main.rs` can inject
+/// a real kinematics model instead of a dummy placeholder.
+pub struct SimulatorPlugin {
+    /// The initial machine state. Wrapped in `Option` so that it can be
+    /// taken (moved) out in `build()`, which receives `&self`.
+    machine: std::sync::Arc<Mutex<Option<MachineContext>>>,
+}
+
+impl SimulatorPlugin {
+    /// Creates a new plugin, taking ownership of the initialized `MachineContext`.
+    pub fn new(machine: MachineContext) -> Self {
+        Self {
+            machine: std::sync::Arc::new(Mutex::new(Some(machine))),
+        }
     }
 }
 
-/// The main Simulator plugin that groups all simulation and UI subsystems.
-pub struct SimulatorPlugin;
-
 impl Plugin for SimulatorPlugin {
     fn build(&self, app: &mut App) {
-        // Initialize the core MachineContext inside a Mutex for thread-safe interior mutability
-        let engine = MachineContext::new(Box::new(DummyKinematics));
-        
-        app.insert_resource(MachineState(Mutex::new(engine)))
+        // Extract the MachineContext from the Arc<Mutex<Option<...>>> and wrap it
+        // in the Bevy Resource type expected by all simulator systems.
+        let machine_context = self
+            .machine
+            .lock()
+            .unwrap()
+            .take()
+            .expect("SimulatorPlugin::build called more than once");
+
+        app.insert_resource(resources::MachineState(Mutex::new(machine_context)))
             .insert_resource(ViewportConfig {
                 show_grid: true,
                 show_axis: true,
             })
-            // Add sub-plugins
-            .add_plugins((
-                ScenePlugin,
-                KinematicsSyncPlugin,
-                UiPlugin,
-            ));
+            .add_plugins((ScenePlugin, KinematicsSyncPlugin, UiPlugin));
     }
 }
