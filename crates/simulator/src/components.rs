@@ -33,3 +33,9 @@ pub struct KinematicLink {
     /// How the motor's position translates to spatial transformation.
     pub mapping: AxisMapping,
 }
+
+/// A component that marks the toolhead in a CoreXY system.
+/// The CoreXY toolhead's position depends on two actuators (A and B, or axis_1 and axis_2),
+/// so it requires a dedicated synchronization system.
+#[derive(Component)]
+pub struct CoreXyHeadLink;

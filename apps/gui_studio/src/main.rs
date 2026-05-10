@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
     );
 
     // --- 4. Build kinematics from config (factory pattern) ---
-    let active_kinematics = kinematics::factory::build_kinematics(config)
+    let active_kinematics = kinematics::factory::build_kinematics(config.clone())
         .context("Failed to build kinematics from the loaded configuration")?;
 
     // --- 5. Initialize the headless engine core ---
@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
                 ..default()
             }))
             // Inject the fully initialized machine context into the simulator plugin
-            .add_plugins(simulator::SimulatorPlugin::new(machine))
+            .add_plugins(simulator::SimulatorPlugin::new(config.clone(), machine))
             .run();
     }
 

@@ -1,0 +1,21 @@
+kinematics_type = "corexy"
+
+[limits.x]
+min = 0.0
+max = 300.0
+
+[limits.y]
+min = 0.0
+max = 300.0
+
+[limits.z]
+min = 0.0
+max = 300.0
+
+[limits.a]
+min = -180.0
+max = 180.0
+
+[limits.c]
+min = -360.0
+max = 360.0

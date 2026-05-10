@@ -7,6 +7,7 @@ pub mod resources;
 
 use bevy::prelude::*;
 use engine::MachineContext;
+use kinematics::config::KinematicsConfig;
 use plugins::{kinematics_sync::KinematicsSyncPlugin, scene::ScenePlugin, ui::UiPlugin};
 use resources::ViewportConfig;
 use std::sync::Mutex;
@@ -15,15 +16,18 @@ use std::sync::Mutex;
 /// Accepts an externally-built `MachineContext` so that `main.rs` can inject
 /// a real kinematics model instead of a dummy placeholder.
 pub struct SimulatorPlugin {
+    /// The kinematics configuration, used to build the correct scene hierarchy.
+    config: KinematicsConfig,
     /// The initial machine state. Wrapped in `Option` so that it can be
     /// taken (moved) out in `build()`, which receives `&self`.
     machine: std::sync::Arc<Mutex<Option<MachineContext>>>,
 }
 
 impl SimulatorPlugin {
-    /// Creates a new plugin, taking ownership of the initialized `MachineContext`.
-    pub fn new(machine: MachineContext) -> Self {
+    /// Creates a new plugin, taking ownership of the initialized `MachineContext` and config.
+    pub fn new(config: KinematicsConfig, machine: MachineContext) -> Self {
         Self {
+            config,
             machine: std::sync::Arc::new(Mutex::new(Some(machine))),
         }
     }
@@ -41,6 +45,7 @@ impl Plugin for SimulatorPlugin {
             .expect("SimulatorPlugin::build called more than once");
 
         app.insert_resource(resources::MachineState(Mutex::new(machine_context)))
+            .insert_resource(resources::MachineConfig(self.config.clone())) // Provide the config as a Resource for the scene setup
             .insert_resource(ViewportConfig {
                 show_grid: true,
                 show_axis: true,

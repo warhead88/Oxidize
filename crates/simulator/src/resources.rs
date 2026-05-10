@@ -2,12 +2,17 @@
 
 use bevy::prelude::*;
 use engine::MachineContext;
+use kinematics::config::KinematicsConfig;
 use std::sync::Mutex;
 
 /// A thread-safe wrapper around the core `MachineContext`.
 /// This is the single source of truth for the machine's state.
 #[derive(Resource)]
 pub struct MachineState(pub Mutex<MachineContext>);
+
+/// A wrapper around the configuration to make it available as a Bevy Resource.
+#[derive(Resource)]
+pub struct MachineConfig(pub KinematicsConfig);
 
 /// Configuration for the 3D viewport representation.
 #[derive(Resource)]
