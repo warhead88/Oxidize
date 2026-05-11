@@ -46,7 +46,8 @@ fn update_transforms_system(
                 transform.translation = base.0 + axis * value;
             }
             AxisMapping::Rotation(axis) => {
-                transform.rotation = Quat::from_axis_angle(axis.normalize(), value);
+                // The angle from the engine is in degrees, Bevy expects radians.
+                transform.rotation = Quat::from_axis_angle(axis.normalize(), value.to_radians());
             }
         }
     }

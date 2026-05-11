@@ -23,6 +23,8 @@ fn default_config() -> KinematicsConfig {
             a: AxisLimits { min: -180.0, max: 180.0 },
             c: AxisLimits { min: -360.0, max: 360.0 },
         },
+        // None for non-5-axis configs; set to Some(TrunnionGeometry{...}) for TrunnionCoreXY.
+        trunnion_geometry: None,
     }
 }
 
