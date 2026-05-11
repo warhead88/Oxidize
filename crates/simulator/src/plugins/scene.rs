@@ -13,7 +13,7 @@ use bevy::{
 };
 
 use crate::{
-    components::{ActuatorId, AxisMapping, BaseTransform, CoreXyHeadLink, KinematicLink},
+    components::{ActuatorId, AxisMapping, BaseTransform, CoreXyGantryLink, CoreXyHeadLink, KinematicLink},
     resources::MachineConfig,
 };
 use kinematics::config::{KinematicsConfig, KinematicsType, PrintHeadGeometry};
@@ -377,6 +377,7 @@ fn spawn_corexy_printer(
     let nozzle_y = zh; // world Y of the nozzle tip at Z=0
 
     // --- 4 corner vertical rails for bed Z motion ---
+    // --- 4 corner vertical rails for bed Z motion ---
     let half_x = bx / 2.0 + 0.1;
     let half_z = by / 2.0 + 0.1;
     for &(sx, sz) in &[(-half_x, -half_z), (half_x, -half_z), (-half_x, half_z), (half_x, half_z)] {
@@ -388,31 +389,35 @@ fn spawn_corexy_printer(
         });
     }
 
-    // --- Fixed overhead frame (top gantry plate) ---
-    let frame_y = nozzle_y + 0.12;
-    let frame = commands
-        .spawn(PbrBundle {
-            mesh: meshes.add(Cuboid::new(bx + 0.25, 0.06, by + 0.25)),
-            material: theme.frame.clone(),
-            transform: Transform::from_xyz(0.0, frame_y, 0.0),
+    // --- Fixed Y-rails (along depth / Bevy Z) ---
+    // These rails are stationary, and the X-gantry slides along them.
+    for &sx in &[-bx / 2.0 - 0.1, bx / 2.0 + 0.1] {
+        commands.spawn(PbrBundle {
+            mesh: meshes.add(Cylinder::new(0.015, by + 0.3)),
+            material: theme.guide_rail.clone(),
+            transform: Transform::from_xyz(sx, nozzle_y + 0.08, 0.0)
+                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
             ..default()
-        })
-        .id();
+        });
+    }
 
-    // Two X rails on the gantry underside
-    spawn_x_beam(commands, meshes, theme, bx + 0.15, frame_y - 0.04, -by / 4.0);
-    spawn_x_beam(commands, meshes, theme, bx + 0.15, frame_y - 0.04,  by / 4.0);
+    // --- Moving X-Gantry (moves along Y / Bevy Z) ---
+    let gantry = commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Cylinder::new(0.018, bx + 0.25)),
+            material: theme.guide_rail.clone(),
+            transform: Transform::from_xyz(0.0, nozzle_y + 0.08, 0.0)
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            ..default()
+        },
+        CoreXyGantryLink,
+    )).id();
 
-    // --- Composite CoreXY head (child of frame) ---
-    // Local Y: head hangs so nozzle tip is at nozzle_y in world space.
-    // frame is at frame_y world = nozzle_y + 0.12
-    // nozzle tip local = -0.12 → 0.0 + nozzle_length offset handled inside composite
-    let hh = head_geo.height * VIS_SCALE;
-    let nl = head_geo.nozzle_length * VIS_SCALE;
-    let head_local_y = -(hh + nl + 0.06); // nozzle tip sits at frame bottom
-    let head_local = Transform::from_xyz(-bx / 2.0, head_local_y, -by / 2.0);
+    // --- Composite CoreXY head (child of Gantry) ---
+    // Local Y: 0.1 below gantry. Local X: updated by sync system relative to gantry center.
+    let head_local = Transform::from_xyz(0.0, -0.08, 0.0);
     let head = spawn_composite_head(commands, meshes, theme, &head_geo, head_local);
-    commands.entity(frame).push_children(&[head]);
+    commands.entity(gantry).push_children(&[head]);
 
     // --- Bed (moves down as Z increases) ---
     // At Z=0 the top surface is at nozzle_y.
@@ -470,26 +475,33 @@ fn spawn_trunnion_corexy_printer(
         });
     }
 
-    // --- Fixed overhead frame + CoreXY head ---
-    let frame_y = nozzle_y + 0.12;
-    let frame = commands
-        .spawn(PbrBundle {
-            mesh: meshes.add(Cuboid::new(bx + 0.25, 0.06, by + 0.25)),
-            material: theme.frame.clone(),
-            transform: Transform::from_xyz(0.0, frame_y, 0.0),
+    // --- Fixed Y-rails (along depth / Bevy Z) ---
+    for &sx in &[-bx / 2.0 - 0.12, bx / 2.0 + 0.12] {
+        commands.spawn(PbrBundle {
+            mesh: meshes.add(Cylinder::new(0.015, by + 0.35)),
+            material: theme.guide_rail.clone(),
+            transform: Transform::from_xyz(sx, nozzle_y + 0.08, 0.0)
+                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
             ..default()
-        })
-        .id();
+        });
+    }
 
-    spawn_x_beam(commands, meshes, theme, bx + 0.15, frame_y - 0.04, -by / 4.0);
-    spawn_x_beam(commands, meshes, theme, bx + 0.15, frame_y - 0.04,  by / 4.0);
+    // --- Moving X-Gantry (moves along Y / Bevy Z) ---
+    let gantry = commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Cylinder::new(0.018, bx + 0.28)),
+            material: theme.guide_rail.clone(),
+            transform: Transform::from_xyz(0.0, nozzle_y + 0.08, 0.0)
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            ..default()
+        },
+        CoreXyGantryLink,
+    )).id();
 
-    let hh = head_geo.height * VIS_SCALE;
-    let nl = head_geo.nozzle_length * VIS_SCALE;
-    let head_local_y = -(hh + nl + 0.06);
-    let head_local = Transform::from_xyz(-bx / 2.0, head_local_y, -by / 2.0);
+    // --- Composite CoreXY head (child of Gantry) ---
+    let head_local = Transform::from_xyz(0.0, -0.08, 0.0);
     let head = spawn_composite_head(commands, meshes, theme, &head_geo, head_local);
-    commands.entity(frame).push_children(&[head]);
+    commands.entity(gantry).push_children(&[head]);
 
     // --- Z Stage (drops as Z increases) ---
     // Starts so that platter surface = nozzle_y

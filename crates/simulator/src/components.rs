@@ -47,3 +47,8 @@ pub struct KinematicLink {
 /// so it requires a dedicated synchronization system.
 #[derive(Component)]
 pub struct CoreXyHeadLink;
+
+/// A component that marks the transverse gantry in a CoreXY system.
+/// It moves along the Y-axis (Bevy Z) and carries the X-axis rail.
+#[derive(Component)]
+pub struct CoreXyGantryLink;

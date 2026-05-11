@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use crate::{
-    components::{ActuatorId, AxisMapping, BaseTransform, CoreXyHeadLink, KinematicLink},
+    components::{ActuatorId, AxisMapping, BaseTransform, CoreXyGantryLink, CoreXyHeadLink, KinematicLink},
     resources::{MachineConfig, MachineState},
 };
 use crate::plugins::scene::VIS_SCALE;
@@ -23,7 +23,7 @@ impl Plugin for KinematicsSyncPlugin {
 /// entity's initial spawn position. Now: `base + axis * value`.
 fn update_transforms_system(
     machine_state: Res<MachineState>,
-    mut query: Query<(&mut Transform, &KinematicLink, &BaseTransform), Without<CoreXyHeadLink>>,
+    mut query: Query<(&mut Transform, &KinematicLink, &BaseTransform), (Without<CoreXyHeadLink>, Without<CoreXyGantryLink>)>,
 ) {
     let actuators: ActuatorState = {
         let lock = machine_state.0.lock().unwrap();
@@ -61,23 +61,28 @@ fn update_transforms_system(
 fn sync_corexy_head(
     machine_state: Res<MachineState>,
     config: Res<MachineConfig>,
-    mut query: Query<&mut Transform, With<CoreXyHeadLink>>,
+    mut head_query: Query<&mut Transform, (With<CoreXyHeadLink>, Without<CoreXyGantryLink>)>,
+    mut gantry_query: Query<&mut Transform, (With<CoreXyGantryLink>, Without<CoreXyHeadLink>)>,
 ) {
-    // Read logical X/Y from the target — no manual inverse kinematics needed.
     let (target_x, target_y) = {
         let lock = machine_state.0.lock().unwrap();
         let t = lock.current_target();
         (t.x, t.y)
     };
 
-    // Center offset: the head starts at corner (-bed_x/2, _, -bed_y/2) of the frame.
-    // When target is 0mm, translation should be -half_size; at max, it's +half_size.
     let bed_x_half = config.0.limits.x.max * VIS_SCALE / 2.0;
     let bed_y_half = config.0.limits.y.max * VIS_SCALE / 2.0;
 
-    for mut transform in query.iter_mut() {
-        // Bevy X  ← logical X, Bevy Z ← logical Y (depth in Bevy = Y in print space)
-        transform.translation.x = (target_x * VIS_SCALE) - bed_x_half;
+    // 1. Move Gantry along Y (Bevy Z)
+    for mut transform in gantry_query.iter_mut() {
         transform.translation.z = (target_y * VIS_SCALE) - bed_y_half;
+    }
+
+    // 2. Move Head along X
+    // Note: If head is a child of gantry, translation.z is 0 (relative).
+    // If head is independent, we might need to set Z too, but user asked for "standard rails"
+    // which implies a moving transverse gantry.
+    for mut transform in head_query.iter_mut() {
+        transform.translation.x = (target_x * VIS_SCALE) - bed_x_half;
     }
 }
