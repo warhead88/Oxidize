@@ -23,8 +23,9 @@ fn default_config() -> KinematicsConfig {
             a: AxisLimits { min: -180.0, max: 180.0 },
             c: AxisLimits { min: -360.0, max: 360.0 },
         },
-        // None for non-5-axis configs; set to Some(TrunnionGeometry{...}) for TrunnionCoreXY.
         trunnion_geometry: None,
+        // None means the visualizer will use PrintHeadGeometry::default()
+        head_geometry: None,
     }
 }
 
@@ -45,7 +46,6 @@ pub fn load_or_default(path: &str) -> anyhow::Result<KinematicsConfig> {
         );
         let config = default_config();
 
-        // Serialize and write the default config to disk as a starter template
         let toml_string = toml::to_string_pretty(&config)
             .context("Failed to serialize default config to TOML")?;
         fs::write(path, toml_string)
