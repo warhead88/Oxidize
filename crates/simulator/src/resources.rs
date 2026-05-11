@@ -10,13 +10,7 @@ use std::sync::Mutex;
 #[derive(Resource)]
 pub struct MachineState(pub Mutex<MachineContext>);
 
-/// A wrapper around the configuration to make it available as a Bevy Resource.
+/// A wrapper around the kinematics configuration, available as a Bevy Resource.
+/// Used by scene-building and sync systems to read machine limits.
 #[derive(Resource)]
 pub struct MachineConfig(pub KinematicsConfig);
-
-/// Configuration for the 3D viewport representation.
-#[derive(Resource)]
-pub struct ViewportConfig {
-    pub show_grid: bool,
-    pub show_axis: bool,
-}

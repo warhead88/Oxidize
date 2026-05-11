@@ -9,17 +9,14 @@ use bevy::prelude::*;
 use engine::MachineContext;
 use kinematics::config::KinematicsConfig;
 use plugins::{kinematics_sync::KinematicsSyncPlugin, scene::ScenePlugin, ui::UiPlugin};
-use resources::ViewportConfig;
 use std::sync::Mutex;
 
 /// The main Simulator plugin.
-/// Accepts an externally-built `MachineContext` so that `main.rs` can inject
-/// a real kinematics model instead of a dummy placeholder.
+/// Accepts an externally-built `MachineContext` and `KinematicsConfig` so that
+/// `main.rs` can inject a real kinematics model and the machine limits.
 pub struct SimulatorPlugin {
-    /// The kinematics configuration, used to build the correct scene hierarchy.
     config: KinematicsConfig,
-    /// The initial machine state. Wrapped in `Option` so that it can be
-    /// taken (moved) out in `build()`, which receives `&self`.
+    /// Wrapped in Arc<Mutex<Option>> so we can `take()` in `build(&self, ...)`.
     machine: std::sync::Arc<Mutex<Option<MachineContext>>>,
 }
 
@@ -35,8 +32,6 @@ impl SimulatorPlugin {
 
 impl Plugin for SimulatorPlugin {
     fn build(&self, app: &mut App) {
-        // Extract the MachineContext from the Arc<Mutex<Option<...>>> and wrap it
-        // in the Bevy Resource type expected by all simulator systems.
         let machine_context = self
             .machine
             .lock()
@@ -45,11 +40,7 @@ impl Plugin for SimulatorPlugin {
             .expect("SimulatorPlugin::build called more than once");
 
         app.insert_resource(resources::MachineState(Mutex::new(machine_context)))
-            .insert_resource(resources::MachineConfig(self.config.clone())) // Provide the config as a Resource for the scene setup
-            .insert_resource(ViewportConfig {
-                show_grid: true,
-                show_axis: true,
-            })
+            .insert_resource(resources::MachineConfig(self.config.clone()))
             .add_plugins((ScenePlugin, KinematicsSyncPlugin, UiPlugin));
     }
 }
