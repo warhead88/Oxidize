@@ -402,20 +402,33 @@ fn spawn_corexy_printer(
     }
 
     // --- Moving X-Gantry (moves along Y / Bevy Z) ---
-    let gantry = commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Cylinder::new(0.018, bx + 0.25)),
-            material: theme.guide_rail.clone(),
-            transform: Transform::from_xyz(0.0, nozzle_y + 0.08, 0.0)
-                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
-            ..default()
-        },
-        CoreXyGantryLink,
-    )).id();
+    // IMPORTANT: The logical gantry entity has NO rotation so that the child head
+    // inherits world-aligned axes (local X = world X, local Y = world Y).
+    // The visual cylinder is a child with its own rotation.
+    let gantry = commands
+        .spawn((
+            SpatialBundle {
+                transform: Transform::from_xyz(0.0, nozzle_y + 0.08, 0.0),
+                ..default()
+            },
+            CoreXyGantryLink,
+        ))
+        .with_children(|p| {
+            // Visual: horizontal cylinder along world X
+            p.spawn(PbrBundle {
+                mesh: meshes.add(Cylinder::new(0.018, bx + 0.25)),
+                material: theme.guide_rail.clone(),
+                transform: Transform::from_rotation(
+                    Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
+                ),
+                ..default()
+            });
+        })
+        .id();
 
     // --- Composite CoreXY head (child of Gantry) ---
-    // Local Y: 0.1 below gantry. Local X: updated by sync system relative to gantry center.
-    let head_local = Transform::from_xyz(0.0, -0.08, 0.0);
+    // The gantry has no rotation, so local Y = world Y (downward = -Y).
+    let head_local = Transform::from_xyz(0.0, -0.10, 0.0);
     let head = spawn_composite_head(commands, meshes, theme, &head_geo, head_local);
     commands.entity(gantry).push_children(&[head]);
 
@@ -487,19 +500,28 @@ fn spawn_trunnion_corexy_printer(
     }
 
     // --- Moving X-Gantry (moves along Y / Bevy Z) ---
-    let gantry = commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Cylinder::new(0.018, bx + 0.28)),
-            material: theme.guide_rail.clone(),
-            transform: Transform::from_xyz(0.0, nozzle_y + 0.08, 0.0)
-                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
-            ..default()
-        },
-        CoreXyGantryLink,
-    )).id();
+    let gantry = commands
+        .spawn((
+            SpatialBundle {
+                transform: Transform::from_xyz(0.0, nozzle_y + 0.08, 0.0),
+                ..default()
+            },
+            CoreXyGantryLink,
+        ))
+        .with_children(|p| {
+            p.spawn(PbrBundle {
+                mesh: meshes.add(Cylinder::new(0.018, bx + 0.28)),
+                material: theme.guide_rail.clone(),
+                transform: Transform::from_rotation(
+                    Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
+                ),
+                ..default()
+            });
+        })
+        .id();
 
     // --- Composite CoreXY head (child of Gantry) ---
-    let head_local = Transform::from_xyz(0.0, -0.08, 0.0);
+    let head_local = Transform::from_xyz(0.0, -0.10, 0.0);
     let head = spawn_composite_head(commands, meshes, theme, &head_geo, head_local);
     commands.entity(gantry).push_children(&[head]);
 
