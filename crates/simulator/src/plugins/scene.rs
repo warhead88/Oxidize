@@ -121,8 +121,33 @@ fn spawn_corexy_printer(
     let bed_y = limits.y.max * VIS_SCALE;
     let z_height = limits.z.max * VIS_SCALE;
 
-    // --- Bed: moves down along logical Z (Bevy -Y), driven by Actuator3 ---
-    let bed_base = Vec3::new(0.0, 0.0, 0.0);
+    // Nozzle world-Y position: frame sits at (z_height + 0.1), head hangs at -0.1 → nozzle_y = z_height
+    let nozzle_y = z_height;
+
+    // --- Fixed overhead frame with CoreXY head ---
+    let frame = commands.spawn(PbrBundle {
+        mesh: meshes.add(Cuboid::new(bed_x + 0.2, 0.1, bed_y + 0.2)),
+        material: materials.add(Color::srgb(0.4, 0.4, 0.4)),
+        transform: Transform::from_xyz(0.0, nozzle_y + 0.1, 0.0),
+        ..default()
+    }).id();
+
+    let head = commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Cuboid::new(0.15, 0.15, 0.15)),
+            material: materials.add(Color::srgb(0.1, 0.8, 0.1)),
+            // Local to frame: hangs 0.1 below, starts at X/Z corner
+            transform: Transform::from_xyz(-bed_x / 2.0, -0.1, -bed_y / 2.0),
+            ..default()
+        },
+        CoreXyHeadLink,
+    )).id();
+    commands.entity(frame).push_children(&[head]);
+
+    // --- Bed ---
+    // At Z=0: bed surface at nozzle_y (touching the nozzle).
+    // As Z increases → bed moves NEG_Y, increasing the gap.
+    let bed_base = Vec3::new(0.0, nozzle_y, 0.0);
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Cuboid::new(bed_x, 0.05, bed_y)),
@@ -131,34 +156,11 @@ fn spawn_corexy_printer(
             ..default()
         },
         KinematicLink {
-            // CoreXY: Actuator3 = Z motor (bed drops as Z increases)
             actuator: ActuatorId::Actuator3,
             mapping: AxisMapping::Translation(Vec3::NEG_Y * VIS_SCALE),
         },
         BaseTransform(bed_base),
     ));
-
-    // --- Fixed frame at the top ---
-    let frame = commands.spawn(PbrBundle {
-        mesh: meshes.add(Cuboid::new(bed_x + 0.2, 0.1, bed_y + 0.2)),
-        material: materials.add(Color::srgb(0.4, 0.4, 0.4)),
-        transform: Transform::from_xyz(0.0, z_height + 0.1, 0.0),
-        ..default()
-    }).id();
-
-    // --- CoreXY head: position calculated from Actuator1 + Actuator2 ---
-    // Starts at corner (-bed_x/2, -0.1, -bed_y/2) relative to frame.
-    let head = commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Cuboid::new(0.15, 0.15, 0.15)),
-            material: materials.add(Color::srgb(0.1, 0.8, 0.1)),
-            transform: Transform::from_xyz(-bed_x / 2.0, -0.1, -bed_y / 2.0),
-            ..default()
-        },
-        CoreXyHeadLink,
-    )).id();
-
-    commands.entity(frame).push_children(&[head]);
 }
 
 fn spawn_trunnion_corexy_printer(
@@ -168,21 +170,33 @@ fn spawn_trunnion_corexy_printer(
     config: &KinematicsConfig,
 ) {
     let limits = &config.limits;
-    let geometry = config.trunnion_geometry.as_ref().expect("TrunnionCoreXY requires trunnion_geometry");
+    let geometry = config.trunnion_geometry.as_ref()
+        .expect("TrunnionCoreXY requires [trunnion_geometry] in printer.toml");
 
-    let bed_x = limits.x.max * VIS_SCALE;
-    let bed_y = limits.y.max * VIS_SCALE;
-    let z_height = limits.z.max * VIS_SCALE;
+    let bed_x     = limits.x.max * VIS_SCALE;
+    let bed_y     = limits.y.max * VIS_SCALE;
+    let z_height  = limits.z.max * VIS_SCALE;
 
-    // --- Fixed frame at the top ---
+    // Nozzle world-Y: frame at (z_height + 0.1), head hangs at -0.1 from frame
+    let nozzle_y  = z_height;
+
+    // Total height of the trunnion stack above the Z-stage:
+    //   Cradle pivot is pivot_a_offset_z above the Z-stage.
+    //   Platter surface is platter_c_offset_z above the cradle pivot.
+    // At Z=0, platter surface must be at nozzle_y:
+    //   z_stage.y + pivot_a + platter_c = nozzle_y
+    //   → z_stage.y = nozzle_y - (pivot_a + platter_c)
+    let stack_height = (geometry.pivot_a_offset_z + geometry.platter_c_offset_z) * VIS_SCALE;
+    let z_stage_base = Vec3::new(0.0, nozzle_y - stack_height, 0.0);
+
+    // --- Fixed overhead frame with CoreXY head ---
     let frame = commands.spawn(PbrBundle {
         mesh: meshes.add(Cuboid::new(bed_x + 0.2, 0.1, bed_y + 0.2)),
         material: materials.add(Color::srgb(0.4, 0.4, 0.4)),
-        transform: Transform::from_xyz(0.0, z_height + 0.1, 0.0),
+        transform: Transform::from_xyz(0.0, nozzle_y + 0.1, 0.0),
         ..default()
     }).id();
 
-    // --- CoreXY head ---
     let head = commands.spawn((
         PbrBundle {
             mesh: meshes.add(Cuboid::new(0.15, 0.15, 0.15)),
@@ -192,11 +206,10 @@ fn spawn_trunnion_corexy_printer(
         },
         CoreXyHeadLink,
     )).id();
-
     commands.entity(frame).push_children(&[head]);
 
-    // --- Z Stage: moves down along logical Z (Bevy -Y), driven by Actuator3 ---
-    let z_stage_base = Vec3::new(0.0, 0.0, 0.0);
+    // --- Z Stage ---
+    // As Z increases → stage moves NEG_Y, the whole trunnion stack drops.
     let z_stage = commands.spawn((
         PbrBundle {
             mesh: meshes.add(Cuboid::new(bed_x + 0.1, 0.05, bed_y + 0.1)),
@@ -211,39 +224,41 @@ fn spawn_trunnion_corexy_printer(
         BaseTransform(z_stage_base),
     )).id();
 
-    // --- Cradle (A-axis): Rotates around X axis ---
+    // --- Cradle (A-axis) — child of Z Stage ---
+    // Local offset: pivot_a_offset_z above the Z-stage plate.
     let cradle_base = Vec3::new(0.0, geometry.pivot_a_offset_z * VIS_SCALE, 0.0);
     let cradle = commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Cuboid::new(bed_x + 0.05, 0.1, bed_y + 0.05)),
+            mesh: meshes.add(Cuboid::new(bed_x + 0.05, 0.08, bed_y + 0.05)),
             material: materials.add(Color::srgb(0.8, 0.5, 0.2)),
             transform: Transform::from_translation(cradle_base),
             ..default()
         },
         KinematicLink {
             actuator: ActuatorId::Actuator4,
-            mapping: AxisMapping::Rotation(Vec3::X),
+            mapping: AxisMapping::Rotation(Vec3::X), // A-axis tilts around Bevy X
         },
         BaseTransform(cradle_base),
     )).id();
 
-    // --- Platter (C-axis): Rotates around Y axis, child of Cradle ---
+    // --- Platter (C-axis) — child of Cradle ---
+    // Local offset: platter_c_offset_z above the cradle pivot.
     let platter_base = Vec3::new(0.0, geometry.platter_c_offset_z * VIS_SCALE, 0.0);
     let platter = commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Cylinder::new(bed_x / 2.0 - 0.05, 0.05)),
+            mesh: meshes.add(Cylinder::new(bed_x / 2.0 - 0.05, 0.04)),
             material: materials.add(Color::srgb(0.2, 0.2, 0.8)),
             transform: Transform::from_translation(platter_base),
             ..default()
         },
         KinematicLink {
             actuator: ActuatorId::Actuator5,
-            mapping: AxisMapping::Rotation(Vec3::Y),
+            mapping: AxisMapping::Rotation(Vec3::Y), // C-axis spins around Bevy Y
         },
         BaseTransform(platter_base),
     )).id();
 
-    // Hierarchy: Z Stage -> Cradle (A) -> Platter (C)
+    // Hierarchy: Z Stage → Cradle (A) → Platter (C)
     commands.entity(z_stage).push_children(&[cradle]);
     commands.entity(cradle).push_children(&[platter]);
 }
