@@ -275,18 +275,34 @@ fn spawn_cartesian_printer(
     let bx = limits.x.max * VIS_SCALE;
     let by = limits.y.max * VIS_SCALE;
     let zh = limits.z.max * VIS_SCALE;
-    let nozzle_y = zh;
+    let nozzle_y = zh; // Logical Z=0 is world nozzle height
 
-    // --- Z rails (vertical, front & back) ---
-    spawn_z_rails(commands, meshes, theme, zh + 0.2, bx / 2.0, -by / 2.0 - 0.15);
-    spawn_z_rails(commands, meshes, theme, zh + 0.2, bx / 2.0,  by / 2.0 + 0.15);
+    // --- Z rails (vertical) ---
+    // Positioned at X=0 and X=bx to frame the work area.
+    spawn_z_rails(commands, meshes, theme, zh + 0.2, 0.0, 0.0); // Left-back
+    spawn_z_rails(commands, meshes, theme, zh + 0.2, bx, 0.0);  // Right-back
+    // Note: spawn_z_rails spawns two rails around a center. Let's adjust it manually for precision.
+    let rail_mesh = meshes.add(Cylinder::new(0.02, zh + 0.2));
+    commands.spawn(PbrBundle {
+        mesh: rail_mesh.clone(),
+        material: theme.guide_rail.clone(),
+        transform: Transform::from_xyz(-0.05, (zh + 0.2) / 2.0, 0.0),
+        ..default()
+    });
+    commands.spawn(PbrBundle {
+        mesh: rail_mesh.clone(),
+        material: theme.guide_rail.clone(),
+        transform: Transform::from_xyz(bx + 0.05, (zh + 0.2) / 2.0, 0.0),
+        ..default()
+    });
 
-    // --- Z gantry (horizontal beam that moves up) ---
-    let gantry_base = Vec3::new(0.0, 0.1, -by / 2.0 - 0.15);
+    // --- Z gantry (horizontal beam, moves Up) ---
+    // Base Y is 0.1, moves up by logical Z.
+    let gantry_base = Vec3::new(bx / 2.0, 0.0, 0.0);
     let z_gantry = commands
         .spawn((
             PbrBundle {
-                mesh: meshes.add(Cuboid::new(bx + 0.1, 0.07, 0.07)),
+                mesh: meshes.add(Cuboid::new(bx + 0.2, 0.06, 0.06)),
                 material: theme.frame.clone(),
                 transform: Transform::from_translation(gantry_base),
                 ..default()
@@ -300,7 +316,9 @@ fn spawn_cartesian_printer(
         .id();
 
     // --- X carriage (child of Z gantry) ---
-    let carriage_local = Vec3::new(0.0, 0.05, 0.12);
+    // When logical X=0, nozzle is at world X=0.
+    // Parent gantry is at X=bx/2, so carriage local X starts at -bx/2.
+    let carriage_local = Vec3::new(-bx / 2.0, 0.05, 0.0);
     let carriage = commands
         .spawn((
             SpatialBundle {
@@ -336,11 +354,11 @@ fn spawn_cartesian_printer(
 
     commands.entity(z_gantry).push_children(&[carriage]);
 
-    // --- X rail on gantry ---
-    spawn_x_beam(commands, meshes, theme, bx + 0.1, 0.05, -by / 2.0 - 0.15);
-
-    // --- Bed (moves along Y) ---
-    let bed_base = Vec3::new(0.0, 0.0, 0.0);
+    // --- Bed (moves along Y / Bevy Z) ---
+    // Standard: (0,0) is front-left. Nozzle is at Z=0 world.
+    // Bed is `by` deep. At Y=0, bed front edge is at Z=0.
+    // So bed center is at Z = by/2.
+    let bed_base = Vec3::new(bx / 2.0, 0.0, by / 2.0);
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Cuboid::new(bx, 0.04, by)),
@@ -350,12 +368,11 @@ fn spawn_cartesian_printer(
         },
         KinematicLink {
             actuator: ActuatorId::Actuator2,
+            // Y+ in Gcode moves bed FORWARD (+Z in Bevy) so nozzle hits "back" of bed.
             mapping: AxisMapping::Translation(Vec3::Z * VIS_SCALE),
         },
         BaseTransform(bed_base),
     ));
-
-    let _ = nozzle_y; // used implicitly via gantry Z offset
 }
 
 // ---------------------------------------------------------------------------
@@ -374,13 +391,10 @@ fn spawn_corexy_printer(
     let bx = limits.x.max * VIS_SCALE;
     let by = limits.y.max * VIS_SCALE;
     let zh = limits.z.max * VIS_SCALE;
-    let nozzle_y = zh; // world Y of the nozzle tip at Z=0
+    let nozzle_y = zh;
 
     // --- 4 corner vertical rails for bed Z motion ---
-    // --- 4 corner vertical rails for bed Z motion ---
-    let half_x = bx / 2.0 + 0.1;
-    let half_z = by / 2.0 + 0.1;
-    for &(sx, sz) in &[(-half_x, -half_z), (half_x, -half_z), (-half_x, half_z), (half_x, half_z)] {
+    for &(sx, sz) in &[(-0.1, 0.1), (bx + 0.1, 0.1), (-0.1, -by - 0.1), (bx + 0.1, -by - 0.1)] {
         commands.spawn(PbrBundle {
             mesh: meshes.add(Cylinder::new(0.022, zh + 0.3)),
             material: theme.guide_rail.clone(),
@@ -390,21 +404,18 @@ fn spawn_corexy_printer(
     }
 
     // --- Fixed Y-rails (along depth / Bevy Z) ---
-    // These rails are stationary, and the X-gantry slides along them.
-    for &sx in &[-bx / 2.0 - 0.1, bx / 2.0 + 0.1] {
+    for &sx in &[-0.08, bx + 0.08] {
         commands.spawn(PbrBundle {
-            mesh: meshes.add(Cylinder::new(0.015, by + 0.3)),
+            mesh: meshes.add(Cylinder::new(0.015, by + 0.2)),
             material: theme.guide_rail.clone(),
-            transform: Transform::from_xyz(sx, nozzle_y + 0.08, 0.0)
+            transform: Transform::from_xyz(sx, nozzle_y + 0.08, -by / 2.0)
                 .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
             ..default()
         });
     }
 
     // --- Moving X-Gantry (moves along Y / Bevy Z) ---
-    // IMPORTANT: The logical gantry entity has NO rotation so that the child head
-    // inherits world-aligned axes (local X = world X, local Y = world Y).
-    // The visual cylinder is a child with its own rotation.
+    // Logical 0,0 is world X=0, Z=0.
     let gantry = commands
         .spawn((
             SpatialBundle {
@@ -414,27 +425,23 @@ fn spawn_corexy_printer(
             CoreXyGantryLink,
         ))
         .with_children(|p| {
-            // Visual: horizontal cylinder along world X
             p.spawn(PbrBundle {
                 mesh: meshes.add(Cylinder::new(0.018, bx + 0.25)),
                 material: theme.guide_rail.clone(),
-                transform: Transform::from_rotation(
-                    Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
-                ),
+                transform: Transform::from_xyz(bx / 2.0, 0.0, 0.0)
+                    .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
                 ..default()
             });
         })
         .id();
 
     // --- Composite CoreXY head (child of Gantry) ---
-    // The gantry has no rotation, so local Y = world Y (downward = -Y).
     let head_local = Transform::from_xyz(0.0, -0.10, 0.0);
     let head = spawn_composite_head(commands, meshes, theme, &head_geo, head_local);
     commands.entity(gantry).push_children(&[head]);
 
     // --- Bed (moves down as Z increases) ---
-    // At Z=0 the top surface is at nozzle_y.
-    let bed_base = Vec3::new(0.0, nozzle_y, 0.0);
+    let bed_base = Vec3::new(bx / 2.0, nozzle_y, -by / 2.0);
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Cuboid::new(bx, 0.04, by)),

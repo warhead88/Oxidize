@@ -2122,6 +2122,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "gcode_parser"
+version = "0.1.0"
+
+[[package]]
 name = "gethostname"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4078,6 +4082,7 @@ dependencies = [
  "bevy_egui",
  "core_types",
  "engine",
+ "gcode_parser",
  "kinematics",
 ]
 

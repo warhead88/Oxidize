@@ -41,6 +41,7 @@ impl Plugin for SimulatorPlugin {
 
         app.insert_resource(resources::MachineState(Mutex::new(machine_context)))
             .insert_resource(resources::MachineConfig(self.config.clone()))
+            .init_resource::<resources::GCodePlayer>()
             .add_plugins((ScenePlugin, KinematicsSyncPlugin, UiPlugin));
     }
 }

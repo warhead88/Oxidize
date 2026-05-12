@@ -9,3 +9,4 @@ bevy_egui = "0.28"
 core_types = { path = "../core_types" }
 kinematics = { path = "../kinematics" }
 engine = { path = "../engine" }
+gcode_parser = { path = "../gcode_parser" }

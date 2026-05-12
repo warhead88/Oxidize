@@ -4,6 +4,7 @@ members = [
     "crates/kinematics",
     "crates/engine",
     "crates/simulator",
+    "crates/gcode_parser",
     "apps/gui_studio",
 ]
 resolver = "2"

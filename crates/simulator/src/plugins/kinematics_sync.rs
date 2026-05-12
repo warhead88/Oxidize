@@ -3,8 +3,10 @@
 use bevy::prelude::*;
 use crate::{
     components::{ActuatorId, AxisMapping, BaseTransform, CoreXyGantryLink, CoreXyHeadLink, KinematicLink},
-    resources::{MachineConfig, MachineState},
+    resources::{MachineConfig, MachineState, GCodePlayer},
 };
+use core_types::TargetState;
+use gcode_parser::GCodeCommand;
 use crate::plugins::scene::VIS_SCALE;
 use core_types::ActuatorState;
 
@@ -12,7 +14,7 @@ pub struct KinematicsSyncPlugin;
 
 impl Plugin for KinematicsSyncPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (update_transforms_system, sync_corexy_head));
+        app.add_systems(Update, (update_transforms_system, sync_corexy_head, gcode_playback_system));
     }
 }
 
@@ -70,19 +72,113 @@ fn sync_corexy_head(
         (t.x, t.y)
     };
 
-    let bed_x_half = config.0.limits.x.max * VIS_SCALE / 2.0;
-    let bed_y_half = config.0.limits.y.max * VIS_SCALE / 2.0;
+    let bed_x_half = 0.0; // Corner-based: start at 0
+    let bed_y_half = 0.0; // Corner-based: start at 0
 
     // 1. Move Gantry along Y (Bevy Z)
     for mut transform in gantry_query.iter_mut() {
-        transform.translation.z = (target_y * VIS_SCALE) - bed_y_half;
+        // GCode Y+ moves nozzle to back. In our setup, nozzle is at Z=0 world.
+        // CoreXY Y+ moves gantry to back (Bevy Z-).
+        transform.translation.z = -(target_y * VIS_SCALE);
     }
 
     // 2. Move Head along X
-    // Note: If head is a child of gantry, translation.z is 0 (relative).
-    // If head is independent, we might need to set Z too, but user asked for "standard rails"
-    // which implies a moving transverse gantry.
     for mut transform in head_query.iter_mut() {
-        transform.translation.x = (target_x * VIS_SCALE) - bed_x_half;
+        transform.translation.x = (target_x * VIS_SCALE);
+    }
+}
+
+/// Plays back loaded G-code commands, interpolating `MachineState.target`
+/// based on the current feedrate and frame delta time.
+fn gcode_playback_system(
+    time: Res<Time>,
+    machine_state: Res<MachineState>,
+    mut player: ResMut<GCodePlayer>,
+) {
+    if !player.is_playing || player.current_index >= player.commands.len() {
+        if player.is_playing && player.current_index >= player.commands.len() {
+            player.is_playing = false; // Stop when finished
+        }
+        return;
+    }
+
+    let command = player.commands[player.current_index].clone();
+    match command {
+        GCodeCommand::SetAbsolutePositioning => {
+            player.is_absolute = true;
+            player.current_index += 1;
+        }
+        GCodeCommand::SetRelativePositioning => {
+            player.is_absolute = false;
+            player.current_index += 1;
+        }
+        GCodeCommand::Other => {
+            player.current_index += 1;
+        }
+        GCodeCommand::Move { x, y, z, a, c, e, f } => {
+            if let Some(feedrate) = f {
+                player.current_feedrate = feedrate;
+            }
+
+            let mut engine = machine_state.0.lock().unwrap();
+            let current = *engine.current_target();
+
+            let target_point = if player.is_absolute {
+                TargetState {
+                    x: x.unwrap_or(current.x),
+                    y: y.unwrap_or(current.y),
+                    z: z.unwrap_or(current.z),
+                    a: a.unwrap_or(current.a),
+                    c: c.unwrap_or(current.c),
+                    e: e.unwrap_or(current.e),
+                }
+            } else {
+                TargetState {
+                    x: current.x + x.unwrap_or(0.0),
+                    y: current.y + y.unwrap_or(0.0),
+                    z: current.z + z.unwrap_or(0.0),
+                    a: current.a + a.unwrap_or(0.0),
+                    c: current.c + c.unwrap_or(0.0),
+                    e: current.e + e.unwrap_or(0.0),
+                }
+            };
+
+            player.target_point = target_point;
+
+            let dx = target_point.x - current.x;
+            let dy = target_point.y - current.y;
+            let dz = target_point.z - current.z;
+            let da = target_point.a - current.a;
+            let dc = target_point.c - current.c;
+            let de = target_point.e - current.e;
+
+            // Simplistic distance metric combining all axes
+            let dist_sq = dx * dx + dy * dy + dz * dz + da * da + dc * dc + de * de;
+            let dist = dist_sq.sqrt();
+
+            if dist < 0.001 {
+                engine.set_target(target_point);
+                player.current_index += 1;
+            } else {
+                let speed_mm_s = player.current_feedrate / 60.0;
+                let step_dist = speed_mm_s * time.delta_seconds();
+
+                if step_dist >= dist {
+                    engine.set_target(target_point);
+                    player.current_index += 1;
+                } else {
+                    let ratio = step_dist / dist;
+                    let next_target = TargetState {
+                        x: current.x + dx * ratio,
+                        y: current.y + dy * ratio,
+                        z: current.z + dz * ratio,
+                        a: current.a + da * ratio,
+                        c: current.c + dc * ratio,
+                        e: current.e + de * ratio,
+                    };
+                    engine.set_target(next_target);
+                }
+            }
+        }
     }
 }

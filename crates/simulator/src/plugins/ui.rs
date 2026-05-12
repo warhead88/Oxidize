@@ -2,7 +2,9 @@
 
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
-use crate::resources::{MachineConfig, MachineState};
+use crate::resources::{MachineConfig, MachineState, GCodePlayer};
+use gcode_parser::{parse_line, GCodeCommand};
+use std::fs;
 
 pub struct UiPlugin;
 
@@ -19,6 +21,7 @@ fn manual_control_ui(
     mut contexts: EguiContexts,
     machine_state: ResMut<MachineState>,
     config: Res<MachineConfig>,
+    mut player: ResMut<GCodePlayer>,
 ) {
     let limits = &config.0.limits;
 
@@ -41,5 +44,39 @@ fn manual_control_ui(
         if changed {
             engine.set_target(target);
         }
+    });
+
+    egui::Window::new("G-code Player").show(contexts.ctx_mut(), |ui| {
+        ui.horizontal(|ui| {
+            if ui.button("Load test.gcode").clicked() {
+                if let Ok(contents) = fs::read_to_string("test.gcode") {
+                    let commands: Vec<GCodeCommand> = contents
+                        .lines()
+                        .map(parse_line)
+                        .filter(|c| *c != GCodeCommand::Other)
+                        .collect();
+                    player.load(commands);
+                    info!("Loaded {} G-code commands", player.commands.len());
+                } else {
+                    error!("Could not read test.gcode from project root");
+                }
+            }
+
+            if ui.button(if player.is_playing { "Pause" } else { "Play" }).clicked() {
+                player.is_playing = !player.is_playing;
+            }
+
+            if ui.button("Reset").clicked() {
+                player.reset();
+            }
+        });
+
+        ui.separator();
+
+        let total = player.commands.len();
+        let current = player.current_index;
+        ui.label(format!("Progress: {} / {}", current, total));
+        ui.label(format!("Feedrate: {} mm/min", player.current_feedrate));
+        ui.label(format!("Mode: {}", if player.is_absolute { "Absolute (G90)" } else { "Relative (G91)" }));
     });
 }
